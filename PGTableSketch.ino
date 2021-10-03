@@ -17,7 +17,6 @@ const bool potentiometerLogger = true;
 const bool buttonStateLogger = true;
  
 // STATES
-int globalState = 0;                    // 0 - Waiting for a button pressed; 1 - Reading potentiometer values; 2 - Show stored value and set state to 0;
 int buttonState = 0;                    // 0 - LOW; 1 - Pressed once; 2 - Long pressed;
 int buttonFlag = 0;
 
@@ -27,9 +26,29 @@ long buttonCounter = 0;
 // DATA
 int turnStep = 0;
 
+class GlobalStateMachine{
+  private:
+    int currentState = 0;                // 0 - Waiting for a button pressed; 1 - Reading potentiometer values; 2 - Show stored value and set state to 0;
 
-void setup()
-{
+  public:
+    void set(int state){
+      currentState = state;
+
+      if (globalStateLogger == true){
+          Serial.print("Global state changed to: ");
+          Serial.println(state);
+        }
+    }
+
+    int get(){
+      return currentState;
+    }
+};
+
+GlobalStateMachine globalState = GlobalStateMachine();
+
+
+void setup(){
   pinMode(buttonPin, INPUT);
 
   pinMode(redPin, OUTPUT);
@@ -39,11 +58,10 @@ void setup()
   Serial.begin(9600);                   // Initialize serial port data transmission at 9600 baud
 }
 
-void loop()
-{
+void loop(){
   delay(globalDelay);
 
-  switch (globalState) {
+  switch (globalState.get()) {
 
     case 0:
       waitingBigin();
@@ -61,7 +79,7 @@ void loop()
   if(buttonState == 2){
     diodeSetColor(255, 0, 0);
     delay(1000);
-    setGlobalState(0);
+    globalState.set(0); 
     buttonUsed();
   }
 
@@ -73,7 +91,7 @@ void waitingBigin(){
   diodeSetColor(0, 255, 127);
   if (buttonState == 1) {   
     buttonUsed();
-    setGlobalState(1); 
+    globalState.set(1); 
   }
 
 }
@@ -105,7 +123,7 @@ void readingPotentiometer(){
     buttonUsed();
 
     turnStep = _degree;
-    setGlobalState(2); 
+    globalState.set(2); 
   }
 }
 
@@ -117,7 +135,7 @@ void showSavedValue(){
   Serial.print(turnStep);
   Serial.println("°");
   delay(1000);
-  setGlobalState(0);
+  globalState.set(0);
 }
 
 void updateButtonState(){
@@ -156,17 +174,6 @@ void updateButtonState(){
 
 void buttonUsed(){
   buttonState = 0;
-}
-
-void setGlobalState(int state){
-  globalState = state;
-
-  if (globalStateLogger == true)
-    {
-      Serial.print("Global state changed to: ");
-      Serial.println(state);
-    }
-  
 }
 
 void diodeSetColor(int red, int green, int blue){
