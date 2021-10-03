@@ -14,8 +14,8 @@ const int longPressFactor = 230;        // Number that determines amount of iter
 
 const bool globalStateLogger = true;
 const bool potentiometerLogger = true;
-const bool buttonStateLogger = false;
-
+const bool buttonStateLogger = true;
+ 
 // STATES
 int globalState = 0;                    // 0 - Waiting for a button pressed; 1 - Reading potentiometer values; 2 - Show stored value and set state to 0;
 int buttonState = 0;                    // 0 - LOW; 1 - Pressed once; 2 - Long pressed;
@@ -116,6 +116,7 @@ void showSavedValue(){
   Serial.print(" Final degrees: ");     
   Serial.print(turnStep);
   Serial.println("°");
+  delay(1000);
   setGlobalState(0);
 }
 
