@@ -15,13 +15,6 @@ const int longPressFactor = 230;        // Number that determines amount of iter
 const bool globalStateLogger = true;
 const bool potentiometerLogger = true;
 const bool buttonStateLogger = true;
- 
-// STATES
-int buttonState = 0;                    // 0 - LOW; 1 - Pressed once; 2 - Long pressed;
-int buttonFlag = 0;
-
-// COUNTERS
-long buttonCounter = 0;
 
 // DATA
 int turnStep = 0;
@@ -45,7 +38,62 @@ class GlobalStateMachine{
     }
 };
 
+class ButtonStateMachine{
+  private:
+    int pin = 0;
+    int currentState = 0;                    // 0 - LOW; 1 - Pressed once; 2 - Long pressed;
+    int currentFlag = 0;                     // Saving previous state until unpress button. Used to fix updating before unpress.
+    long buttonCounter = 0;                  // Shows how long the button has been pressed. Used to assign long press state.
+
+  public:
+    ButtonStateMachine(int aPin){
+       pin = aPin;
+    }
+
+    void updateState(){
+      int _buttonInput = digitalRead(pin);
+
+      if (_buttonInput == HIGH && currentFlag != 2){  
+        currentFlag = 1;
+
+        if (buttonCounter == longPressFactor/globalDelay){
+          currentState = 2;
+          currentFlag = 2;
+        } else{
+          buttonCounter++;
+        }
+
+      } else if (_buttonInput == LOW){
+
+        if(currentState == 0 && currentFlag == 1){
+          currentState = 1;
+        }
+        
+        currentFlag = 0;
+        buttonCounter = 0;
+      } 
+      
+      if (buttonStateLogger == true){
+        Serial.print("buttonState: ");
+        Serial.print(currentState);
+        Serial.print(" | buttonFlag: ");
+        Serial.print(currentFlag);
+        Serial.print(" | buttonCounter: ");
+        Serial.println(buttonCounter);
+      }
+    }
+
+    int getState(){                               // Return current button state. 0 - LOW; 1 - Pressed once; 2 - Long pressed;
+      return currentState;
+    }
+
+    void used(){                             // Makes the state machine know that a button has been used. Resets the state.
+      currentState = 0;
+    }
+};
+
 GlobalStateMachine globalState = GlobalStateMachine();
+ButtonStateMachine mainButton = ButtonStateMachine(buttonPin);
 
 
 void setup(){
@@ -76,21 +124,21 @@ void loop(){
       break;
   }
 
-  if(buttonState == 2){
+  if(mainButton.getState() == 2){
     diodeSetColor(255, 0, 0);
     delay(1000);
     globalState.set(0); 
-    buttonUsed();
+    mainButton.used();
   }
 
-  updateButtonState();
+  mainButton.updateState();
 }
 
 /* globalState = 0 */
 void waitingBigin(){
   diodeSetColor(0, 255, 127);
-  if (buttonState == 1) {   
-    buttonUsed();
+  if (mainButton.getState() == 1) {   
+    mainButton.used();
     globalState.set(1); 
   }
 
@@ -119,8 +167,8 @@ void readingPotentiometer(){
     Serial.println(_colour);
   }
 
-  if (buttonState == 1) {    
-    buttonUsed();
+  if (mainButton.getState() == 1) {    
+    mainButton.used();
 
     turnStep = _degree;
     globalState.set(2); 
@@ -136,44 +184,6 @@ void showSavedValue(){
   Serial.println("°");
   delay(1000);
   globalState.set(0);
-}
-
-void updateButtonState(){
-  int _buttonInput = digitalRead(buttonPin);
-
-  if (_buttonInput == HIGH && buttonFlag != 2){  
-    buttonFlag = 1;
-
-    if (buttonCounter == longPressFactor/globalDelay){
-      buttonState = 2;
-      buttonFlag = 2;
-    } else{
-      buttonCounter++;
-    }
-
-  } else if (_buttonInput == LOW){
-
-    if(buttonState == 0 && buttonFlag == 1){
-      buttonState = 1;
-    }
-    
-    buttonFlag = 0;
-    buttonCounter = 0;
-  } 
-  
-  if (buttonStateLogger == true){
-    Serial.print("buttonState: ");
-    Serial.print(buttonState);
-    Serial.print(" | buttonFlag: ");
-    Serial.print(buttonFlag);
-    Serial.print(" | buttonCounter: ");
-    Serial.println(buttonCounter);
-  }
-  
-}
-
-void buttonUsed(){
-  buttonState = 0;
 }
 
 void diodeSetColor(int red, int green, int blue){
